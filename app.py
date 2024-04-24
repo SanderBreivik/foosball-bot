@@ -1,19 +1,19 @@
 import os
 import json
 import logging
-from dotenv import load_dotenv
+from dotenv import load_dotenv, find_dotenv
 from flask import Flask, request, jsonify
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
-# Load environment variables
-load_dotenv()
+dotenv_path = find_dotenv()
+load_dotenv(dotenv_path)
 
-# Set up basic configuration for logging
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
-client = WebClient(token=os.environ['SLACK_BOT_TOKEN'])
+client = WebClient(token=os.getenv('SLACK_BOT_TOKEN'))
 
 @app.route('/post_foosball', methods=['POST'])
 def post_foosball():
@@ -81,4 +81,4 @@ def interactive():
         return jsonify({'error': 'Failed to update message'}), 400
 
 if __name__ == "__main__":
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 3000)))
+    app.run(host='0.0.0.0', port=int(os.getenv("PORT", 3000)))
