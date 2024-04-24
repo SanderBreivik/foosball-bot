@@ -1,3 +1,4 @@
+from flask import Flask, request, jsonify
 import os
 import json
 import logging
@@ -34,10 +35,10 @@ def post_foosball():
                 }
             ]
         )
-        logging.info('Message posted successfully!')
     except SlackApiError as e:
-        logging.error(f'Failed to post message: {e.response["error"]}')
+        logging.error(f"Failed to post message: {e.response['error']}")
         return jsonify({'error': e.response['error']}), 400
+    logging.info(f"Message posted!")
     return jsonify({'message': 'Message posted!'}), 200
 
 @app.route('/slack/interactive', methods=['POST'])
@@ -45,35 +46,34 @@ def interactive():
     payload = json.loads(request.form['payload'])
     user_name = payload['user']['name']
     action_id = payload['actions'][0]['action_id']
-    original_message = payload['message']
+    channel_id = payload['channel']['id']
+    message_ts = payload['container']['message_ts']
 
-    updated_blocks = []
-    for block in original_message['blocks']:
+    # Update the block that contains the button clicked
+    blocks = payload['message']['blocks']
+    for block in blocks:
         if block['type'] == 'actions':
-            updated_elements = []
             for element in block['elements']:
-                new_element = element  # Copy the original element
                 if element['action_id'] == action_id:
-                    new_element['text']['text'] = f"{user_name} (selected)"  # Update the text
-                    new_element['style'] = 'danger'  # Set style to danger
-                    new_element['action_id'] = 'disabled'  # Disable further interactions
-                updated_elements.append(new_element)
-            block['elements'] = updated_elements
-        updated_blocks.append(block)
+                    element['text']['text'] = f"{user_name} (selected)"
+                    element['style'] = 'danger'
+                    element['action_id'] = 'disabled'  # This will effectively disable the button
 
     try:
         client.chat_update(
-            channel=payload['channel']['id'],
-            ts=payload['container']['message_ts'],
+            channel=channel_id,
+            ts=message_ts,
             text="Select your position:",
-            blocks=updated_blocks
+            blocks=blocks
         )
-        logger.info('Message updated successfully!')
+        logging.info(f"Message updated: {message_ts}")
         return jsonify({'status': 'Message updated successfully'}), 200
     except SlackApiError as e:
-        logger.error(f'Failed to update message: {e.response["error"]}. Payload: {payload}')
+        logging.error(f"Failed to update message: {e.response['error']}")
         return jsonify({'error': f'Failed to update message: {e.response["error"]}'}), 400
-
+    except Exception as e:
+        logging.error(f"An error occurred: {e}")
+        return jsonify({'error': 'An error occurred'}), 500
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 3000)))
