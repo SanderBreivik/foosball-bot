@@ -20,7 +20,7 @@ def post_foosball():
     try:
         response = client.chat_postMessage(
             channel='#foosball',
-            text="Bli med på foosball! Velg en ledig spot:",
+            text="Bli med på foosball da! Velg en ledig spot:",
             blocks=[
                 {
                     "type": "actions",
