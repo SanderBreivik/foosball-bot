@@ -54,19 +54,19 @@ def interactive():
         if block['type'] == 'actions' and block['block_id'] == block_id:
             updated_elements = []
             for element in block['elements']:
+                # Ensure this conditional correctly identifies the button that was pressed
                 if element['action_id'] == action_id:
-                    # Update the button text with the user's name and disable further interaction
                     updated_elements.append({
                         "type": "button",
                         "text": {"type": "plain_text", "text": f"{user_name} (selected)"},
-                        "style": "danger",  # Optional: change style to indicate selection
-                        "action_id": "disabled",  # Change the action_id to disable the button
+                        "style": "danger",
+                        "action_id": "disabled",
                         "value": element['value']
                     })
                 else:
                     updated_elements.append(element)
             block['elements'] = updated_elements
-        updated_blocks.append(block)
+
 
     # Update the original message
     try:
@@ -79,11 +79,12 @@ def interactive():
         logger.info('Message updated successfully!')
         return jsonify({'status': 'Message updated successfully'}), 200
     except SlackApiError as e:
-        logger.error(f'Failed to update message: {e.response}')
-        return jsonify({'error': 'Failed to update message'}), 400
+        logging.error(f"Failed to update message: {e.response['error']}")
+        return jsonify({'error': f"Failed to update message: {e.response['error']}"}), 400
     except Exception as e:
-        logger.error(f'An error occurred: {e}')
-        return jsonify({'error': 'An error occurred'}), 500
+        logging.error(f"Unexpected error: {str(e)}")
+        return jsonify({'error': f"Unexpected error: {str(e)}"}), 400
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 3000)))
