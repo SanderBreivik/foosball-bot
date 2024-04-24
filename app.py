@@ -48,25 +48,26 @@ def interactive():
     original_message = payload['message']
     block_id = payload['actions'][0]['block_id']
 
-    # Find the block and update the button text and disable it
+    # Construct updated blocks
     updated_blocks = []
     for block in original_message['blocks']:
         if block['type'] == 'actions' and block['block_id'] == block_id:
             updated_elements = []
             for element in block['elements']:
-                # Ensure this conditional correctly identifies the button that was pressed
                 if element['action_id'] == action_id:
+                    # Only update the clicked button
                     updated_elements.append({
                         "type": "button",
                         "text": {"type": "plain_text", "text": f"{user_name} (selected)"},
                         "style": "danger",
-                        "action_id": "disabled",
+                        "action_id": "disabled",  # Change the action_id to disable the button
                         "value": element['value']
                     })
                 else:
+                    # Keep other buttons as is
                     updated_elements.append(element)
             block['elements'] = updated_elements
-
+        updated_blocks.append(block)
 
     # Update the original message
     try:
@@ -79,11 +80,9 @@ def interactive():
         logger.info('Message updated successfully!')
         return jsonify({'status': 'Message updated successfully'}), 200
     except SlackApiError as e:
-        logging.error(f"Failed to update message: {e.response['error']}")
-        return jsonify({'error': f"Failed to update message: {e.response['error']}"}), 400
-    except Exception as e:
-        logging.error(f"Unexpected error: {str(e)}")
-        return jsonify({'error': f"Unexpected error: {str(e)}"}), 400
+        logger.error(f'Failed to update message: {e.response["error"]}')
+        return jsonify({'error': 'Failed to update message'}), 400
+
 
 
 if __name__ == "__main__":
