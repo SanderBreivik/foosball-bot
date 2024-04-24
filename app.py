@@ -3,7 +3,6 @@ import os
 import json
 import logging
 from dotenv import load_dotenv, find_dotenv
-from flask import Flask, request, jsonify
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
@@ -16,8 +15,14 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 client = WebClient(token=os.getenv('SLACK_BOT_TOKEN'))
 
+# Track selected spots
+selected_spots = {}
+
 @app.route('/post_foosball', methods=['POST'])
 def post_foosball():
+    # Reset the spot selections when posting a new message
+    global selected_spots
+    selected_spots = {'spot1': None, 'spot2': None, 'spot3': None, 'spot4': None}
     try:
         response = client.chat_postMessage(
             channel='#foosball',
@@ -35,19 +40,24 @@ def post_foosball():
                 }
             ]
         )
+        logging.info("Message posted and spots reset!")
     except SlackApiError as e:
         logging.error(f"Failed to post message: {e.response['error']}")
         return jsonify({'error': e.response['error']}), 400
-    logging.info(f"Message posted!")
     return jsonify({'message': 'Message posted!'}), 200
 
 @app.route('/slack/interactive', methods=['POST'])
 def interactive():
     payload = json.loads(request.form['payload'])
+    user_id = payload['user']['id']
     user_name = payload['user']['name']
     action_id = payload['actions'][0]['action_id']
     channel_id = payload['channel']['id']
     message_ts = payload['container']['message_ts']
+
+    # Update the spot tracking
+    if selected_spots[action_id] is None:
+        selected_spots[action_id] = f"<@{user_id}>"
 
     # Update the block that contains the button clicked
     blocks = payload['message']['blocks']
@@ -57,7 +67,8 @@ def interactive():
                 if element['action_id'] == action_id:
                     element['text']['text'] = f"{user_name} (selected)"
                     element['style'] = 'danger'
-                    element['action_id'] = f"disabled-{user_name}"  # This will effectively disable the button
+                    element['action_id'] = f"disabled-{user_id}"  # This will effectively disable the button
+
     try:
         client.chat_update(
             channel=channel_id,
@@ -66,6 +77,15 @@ def interactive():
             blocks=blocks
         )
         logging.info(f"Message updated: {message_ts}")
+
+        # Check if all spots are selected
+        if all(selected_spots.values()):
+            players = ', '.join(selected_spots.values())
+            client.chat_postMessage(
+                channel=channel_id,
+                text=f"All spots are taken by: {players}. Let's play!"
+            )
+
         return jsonify({'status': 'Message updated successfully'}), 200
     except SlackApiError as e:
         logging.error(f"Failed to update message: {e.response['error']}, blocks: {blocks}")
