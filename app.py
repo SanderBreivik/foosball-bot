@@ -69,7 +69,7 @@ def interactive():
         logging.info(f"Message updated: {message_ts}")
         return jsonify({'status': 'Message updated successfully'}), 200
     except SlackApiError as e:
-        logging.error(f"Failed to update message: {e.response['error']}")
+        logging.error(f"Failed to update message: {e.response['error']}, blocks: {blocks}")
         return jsonify({'error': f'Failed to update message: {e.response["error"]}'}), 400
     except Exception as e:
         logging.error(f"An error occurred: {e}")
