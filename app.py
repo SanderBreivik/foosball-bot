@@ -34,7 +34,7 @@ def post_foosball():
                 }
             ]
         )
-        logging.info('Message posted successfully.')
+        logging.info('Message posted successfully!')
     except SlackApiError as e:
         logging.error(f'Failed to post message: {e.response["error"]}')
         return jsonify({'error': e.response['error']}), 400
