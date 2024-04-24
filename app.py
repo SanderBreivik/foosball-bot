@@ -76,8 +76,10 @@ def interactive():
             text=original_message['text'],
             blocks=updated_blocks
         )
+        logger.info('Message updated successfully!')
         return jsonify({'status': 'Message updated successfully'}), 200
     except SlackApiError as e:
+        logger.error(f'Failed to update message: {e.response}')
         return jsonify({'error': 'Failed to update message'}), 400
 
 if __name__ == "__main__":
