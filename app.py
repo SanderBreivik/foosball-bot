@@ -59,18 +59,20 @@ def interactive():
             updated_elements = []
             for element in block['elements']:
                 if element['action_id'] == action_id:
-                    # Only update the clicked button
+                    # Update the clicked button
                     updated_elements.append({
                         "type": "button",
                         "text": {"type": "plain_text", "text": f"{user_name} (selected)"},
                         "style": "danger",
-                        "action_id": "disabled",  # Change the action_id to disable the button
+                        "action_id": "disabled",  # Disabling the button
                         "value": element['value']
                     })
                 else:
-                    # Keep other buttons as is
+                    # Retain other buttons as is
                     updated_elements.append(element)
+            # Replace elements in the block
             block['elements'] = updated_elements
+        # Add updated or unchanged blocks to the updated_blocks list
         updated_blocks.append(block)
 
     # Update the original message
@@ -79,12 +81,12 @@ def interactive():
             channel=payload['channel']['id'],
             ts=payload['container']['message_ts'],
             text=original_message['text'],
-            blocks=updated_blocks
+            blocks=updated_blocks  # Make sure this is a valid blocks structure
         )
         logger.info('Message updated successfully!')
         return jsonify({'status': 'Message updated successfully'}), 200
     except SlackApiError as e:
-        logger.error(f'Failed to update message: {e.response["error"]}')
+        logger.error(f'Failed to update message: {e.response["error"]}, Updated blocks: {updated_blocks}')
         return jsonify({'error': 'Failed to update message'}), 400
 
 
