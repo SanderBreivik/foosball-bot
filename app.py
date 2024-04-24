@@ -45,6 +45,10 @@ def interactive():
     payload = json.loads(request.form['payload'])
     user_name = payload['user']['name']
     action_id = payload['actions'][0]['action_id']
+    if action_id == 'disabled':
+        return jsonify({'status': 'Button is disabled'}), 200
+    
+
     original_message = payload['message']
     block_id = payload['actions'][0]['block_id']
 
