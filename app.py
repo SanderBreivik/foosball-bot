@@ -19,7 +19,7 @@ client = WebClient(token=os.getenv('SLACK_BOT_TOKEN'))
 def post_foosball():
     try:
         response = client.chat_postMessage(
-            channel='#foosball',
+            channel='#test_chanel',
             text="Bli med på foosball da! Velg en ledig spot:",
             blocks=[
                 {
@@ -45,50 +45,34 @@ def interactive():
     payload = json.loads(request.form['payload'])
     user_name = payload['user']['name']
     action_id = payload['actions'][0]['action_id']
-    if action_id == 'disabled':
-        return jsonify({'status': 'Button is disabled'}), 200
-    
-
     original_message = payload['message']
-    block_id = payload['actions'][0]['block_id']
 
-    # Construct updated blocks
     updated_blocks = []
     for block in original_message['blocks']:
-        if block['type'] == 'actions' and block['block_id'] == block_id:
+        if block['type'] == 'actions':
             updated_elements = []
             for element in block['elements']:
+                new_element = element  # Copy the original element
                 if element['action_id'] == action_id:
-                    # Update the clicked button
-                    updated_elements.append({
-                        "type": "button",
-                        "text": {"type": "plain_text", "text": f"{user_name} (selected)"},
-                        "style": "danger",
-                        "action_id": "disabled",  # Disabling the button
-                        "value": element['value']
-                    })
-                else:
-                    # Retain other buttons as is
-                    updated_elements.append(element)
-            # Replace elements in the block
+                    new_element['text']['text'] = f"{user_name} (selected)"  # Update the text
+                    new_element['style'] = 'danger'  # Set style to danger
+                    new_element['action_id'] = 'disabled'  # Disable further interactions
+                updated_elements.append(new_element)
             block['elements'] = updated_elements
-        # Add updated or unchanged blocks to the updated_blocks list
         updated_blocks.append(block)
 
-    # Update the original message
     try:
         client.chat_update(
             channel=payload['channel']['id'],
             ts=payload['container']['message_ts'],
-            text=original_message['text'],
-            blocks=updated_blocks  # Make sure this is a valid blocks structure
+            text="Select your position:",
+            blocks=updated_blocks
         )
         logger.info('Message updated successfully!')
         return jsonify({'status': 'Message updated successfully'}), 200
     except SlackApiError as e:
-        logger.error(f'Failed to update message: {e.response["error"]}, Updated blocks: {updated_blocks}')
-        return jsonify({'error': 'Failed to update message'}), 400
-
+        logger.error(f'Failed to update message: {e.response["error"]}. Payload: {payload}')
+        return jsonify({'error': f'Failed to update message: {e.response["error"]}'}), 400
 
 
 if __name__ == "__main__":
