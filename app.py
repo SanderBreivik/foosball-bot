@@ -57,11 +57,7 @@ def interactive():
                 if element['action_id'] == action_id:
                     element['text']['text'] = f"{user_name} (selected)"
                     element['style'] = 'danger'
-                    element['action_id'] = f"disabled-{element['text']['text']}-{user_name}-{element['action_id']}"  # This will effectively disable the button
-                elif element['action_id'].startswith('disabled-'):
-                    element['text']['text'] = element['action_id'].split('-')[0]
-                    element['style'] = 'primary'
-                    element['action_id'] = element['action_id'].split('-')[2]
+                    element['action_id'] = f"disabled-{user_name}"  # This will effectively disable the button
     try:
         client.chat_update(
             channel=channel_id,
