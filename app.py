@@ -81,6 +81,9 @@ def interactive():
     except SlackApiError as e:
         logger.error(f'Failed to update message: {e.response}')
         return jsonify({'error': 'Failed to update message'}), 400
+    except Exception as e:
+        logger.error(f'An error occurred: {e}')
+        return jsonify({'error': 'An error occurred'}), 500
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 3000)))
