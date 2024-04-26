@@ -20,6 +20,12 @@ app = Flask(__name__)
 client = WebClient(token=os.getenv('SLACK_BOT_TOKEN'))
 
 match_spots_lock = Lock()
+match_spots = {
+    "spot1": None,
+    "spot2": None,
+    "spot3": None,
+    "spot4": None
+}
 
 
 def cancel_match_if_incomplete(channel_id, message_ts):
