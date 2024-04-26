@@ -48,8 +48,10 @@ def check_spots_and_update(channel_id, message_ts):
 import random
 
 def announce_complete_match(channel_id):
+    logger.info(f"Announcing complete match. Match spots: {match_spots}")
     if all(spot and spot['user_id'] for spot in match_spots.values()):
         # Gather all players and shuffle them
+
         players = [spot for spot in match_spots.values() if spot]
         random.shuffle(players)
         
@@ -87,6 +89,7 @@ def post_foosball():
     user_name = user_info['user']['name'] if user_info['ok'] else 'Unknown User'
 
     match_spots["spot1"] = {"user_id": user_id, "name": user_name}
+    logger.info(f"User {user_name} has joined the foosball match. Match spots: {match_spots}")
     blocks = [
         {
             "type": "actions",
@@ -131,8 +134,11 @@ def interactive():
                     element['style'] = 'danger'
                     element['action_id'] = f"disabled-{user_name}"
                     match_spots[element['value']] = {"user_id": user_id, "name": user_name}
+                    logger.info(f"User {user_name} has joined the foosball match. Match spots: {match_spots}")
+
                     selected = True
     if selected and all(spot for spot in match_spots.values()):
+        logger.info("All spots are filled. Match confirmed.")
         announce_complete_match(channel_id)
     else:
         try:
