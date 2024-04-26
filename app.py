@@ -46,7 +46,8 @@ class MatchSpots:
     
     def get_user_ids(self):
         return [spot['user_id'] for spot in self.spots.values() if spot]
-    
+
+match_spots = MatchSpots()   
 
 def cancel_match_if_incomplete(channel_id, message_ts):
     threading.Timer(300, check_spots_and_update, args=(channel_id, message_ts)).start()
