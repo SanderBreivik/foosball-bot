@@ -25,22 +25,36 @@ match_spots = {
     "spot4": None
 }
 
-def cancel_match_if_incomplete(channel_id, message_ts, scheduled_time):
-    threading.Timer(300, check_spots_and_cancel, args=(channel_id, message_ts)).start()
+def cancel_match_if_incomplete(channel_id, message_ts):
+    threading.Timer(300, check_spots_and_update, args=(channel_id, message_ts)).start()
 
-def check_spots_and_cancel(channel_id, message_ts):
-    # Check if all spots are filled
-    if all(match_spots.values()):
+def check_spots_and_update(channel_id, message_ts):
+    if all(spot['user_id'] for spot in match_spots.values()):
         logging.info("All spots are filled. Match confirmed.")
         return
     try:
-        client.chat_postMessage(
+        text = "Kamp kanselert, ikke nok spillere. Prøv igjen senere!"
+        client.chat_update(
             channel=channel_id,
-            text="Match cancelled: Not all spots were filled in time."
+            ts=message_ts,
+            text=text
         )
-        logging.info("Match cancelled due to incomplete team.")
+        logging.info("Updated original message to show match cancellation.")
     except SlackApiError as e:
-        logging.error(f"Failed to cancel match: {e.response['error']}")
+        logging.error(f"Failed to update original message: {e.response['error']}")
+
+def announce_complete_match(channel_id, original_message_ts):
+    players = ' '.join([f"<@{spot['user_id']}>" for spot in match_spots.values() if spot is not None])
+    try:
+        text = f"The match is set! Players: {players}"
+        client.chat_update(
+            channel=channel_id,
+            ts=original_message_ts,
+            text=text
+        )
+        logging.info("Announced complete match with all players tagged.")
+    except SlackApiError as e:
+        logging.error(f"Failed to announce complete match: {e.response['error']}")
 
 @app.route('/post_foosball', methods=['POST'])
 def post_foosball():
@@ -48,8 +62,7 @@ def post_foosball():
     user_info = client.users_info(user=user_id)
     user_name = user_info['user']['name'] if user_info['ok'] else 'Unknown User'
 
-    # User that triggered the command fills the first spot
-    match_spots["spot1"] = user_name
+    match_spots["spot1"] = {"user_id": user_id, "name": user_name}
     blocks = [
         {
             "type": "actions",
@@ -64,13 +77,11 @@ def post_foosball():
     ]
     try:
         response = client.chat_postMessage(
-            channel='#test_chanel',
+            channel='#foosball',
             text="Bli med på foosball da! Velg en ledig spot:",
             blocks=blocks
         )
-        # Schedule a timer to check if the match is complete after 5 minutes
-        scheduled_time = datetime.now() + timedelta(minutes=5)
-        cancel_match_if_incomplete(response['channel'], response['ts'], scheduled_time)
+        cancel_match_if_incomplete(response['channel'], response['ts'])
     except SlackApiError as e:
         logging.error(f"Failed to post message: {e.response['error']}")
         return jsonify({'error': e.response['error']}), 400
@@ -80,13 +91,14 @@ def post_foosball():
 @app.route('/slack/interactive', methods=['POST'])
 def interactive():
     payload = json.loads(request.form['payload'])
+    user_id = payload['user']['id']
     user_name = payload['user']['name']
     action_id = payload['actions'][0]['action_id']
     channel_id = payload['channel']['id']
     message_ts = payload['container']['message_ts']
 
-    # Update the block that contains the button clicked
     blocks = payload['message']['blocks']
+    selected = False
     for block in blocks:
         if block['type'] == 'actions':
             for element in block['elements']:
@@ -94,22 +106,25 @@ def interactive():
                     element['text']['text'] = f"{user_name} (selected)"
                     element['style'] = 'danger'
                     element['action_id'] = f"disabled-{user_name}"
-                    match_spots[element['value']] = user_name
-
-    try:
-        client.chat_update(
-            channel=channel_id,
-            ts=message_ts,
-            text="Select your position:",
-            blocks=blocks
-        )
-        logging.info(f"Message updated: {message_ts}")
-    except SlackApiError as e:
-        logging.error(f"Failed to update message: {e.response['error']}, blocks: {blocks}")
-        return jsonify({'error': f'Failed to update message: {e.response["error"]}'}), 400
-    except Exception as e:
-        logging.error(f"An error occurred: {e}")
-        return jsonify({'error': 'An error occurred'}), 500
+                    match_spots[element['value']] = {"user_id": user_id, "name": user_name}
+                    selected = True
+    if selected and all(spot for spot in match_spots.values()):
+        announce_complete_match(channel_id, message_ts)
+    else:
+        try:
+            client.chat_update(
+                channel=channel_id,
+                ts=message_ts,
+                text="Select your position:",
+                blocks=blocks
+            )
+            logging.info(f"Message updated: {message_ts}")
+        except SlackApiError as e:
+            logging.error(f"Failed to update message: {e.response['error']}, blocks: {blocks}")
+            return jsonify({'error': f'Failed to update message: {e.response["error"]}'}), 400
+        except Exception as e:
+            logging.error(f"An error occurred: {e}")
+            return jsonify({'error': 'An error occurred'}), 500
 
     return jsonify({'status': 'Message updated successfully'}), 200
 
