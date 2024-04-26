@@ -47,15 +47,12 @@ class MatchSpots:
     def get_user_ids(self):
         return [spot['user_id'] for spot in self.spots.values() if spot]
     
-    
-
-match_spots = MatchSpots()
 
 def cancel_match_if_incomplete(channel_id, message_ts):
     threading.Timer(300, check_spots_and_update, args=(channel_id, message_ts)).start()
 
 def check_spots_and_update(channel_id, message_ts):
-    if all(spot and spot['user_id'] for spot in match_spots.values()):
+    if match_spots.isFull():
         logging.info("All spots are filled. Match confirmed.")
         return
     try:
@@ -100,6 +97,7 @@ def announce_complete_match(channel_id):
 
 @app.route('/post_foosball', methods=['POST'])
 def post_foosball():
+    match_spots = MatchSpots()
     user_id = request.form.get('user_id')
     user_info = client.users_info(user=user_id)
     user_name = user_info['user']['name'] if user_info['ok'] else 'Unknown User'
