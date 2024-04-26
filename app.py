@@ -21,14 +21,19 @@ client = WebClient(token=os.getenv('SLACK_BOT_TOKEN'))
 
 class MatchSpots:
     def __init__(self):
+        self.lock = Lock()
         self.spots = {f"spot{i}": None for i in range(1, 5)}
 
     def assign_spot(self, user_id, user_name):
-        spot = self.get_available_spot()
-        if spot:
-            self.spots[spot] = {"user_id": user_id, "name": user_name}
-            return spot
-        return None
+        with self.lock:
+            spot = self.get_available_spot()
+            if spot:
+                self.spots[spot] = {"user_id": user_id, "name": user_name}
+                return spot
+            return None
+    
+    def already_assigned(self, user_id):
+        return any(spot and spot['user_id'] == user_id for spot in self.spots.values())
 
     def get_available_spot(self):
         for spot, value in self.spots.items():
@@ -99,7 +104,13 @@ def post_foosball():
     user_info = client.users_info(user=user_id)
     user_name = user_info['user']['name'] if user_info['ok'] else 'Unknown User'
 
-    match_spots.assign_spot(user_id, user_name)
+    if match_spots.already_assigned(user_id):
+        logger.info(f"User {user_name} has already joined the foosball match.")
+        return jsonify({'message': 'User already joined the match.'}), 200
+    else:
+        match_spots.assign_spot(user_id, user_name)
+        logger.info(f"User {user_name} has joined the foosball match. Match spots: {match_spots.spots}")
+        
     logger.info(f"User {user_name} has joined the foosball match. Match spots: {match_spots.spots}")
     blocks = [
         {
@@ -119,7 +130,7 @@ def post_foosball():
     ]
     try:
         response = client.chat_postMessage(
-            channel='#test_chanel',
+            channel='#foosball',
             text="Bli med på foosball da! Velg en ledig spot:",
             blocks=blocks
         )
@@ -155,6 +166,7 @@ def interactive():
                     element['action_id'] = f"disabled-{element['value']}"
 
     if (match_spots.isFull()):
+        logger.info("All spots are filled, announcing the match.")
         announce_complete_match(channel_id)
     else:
         try:
