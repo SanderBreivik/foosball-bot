@@ -18,6 +18,7 @@ primary_region = 'arn'
   auto_stop_machines = false
   auto_start_machines = true
   min_machines_running = 0
+  max_machines_running = 1
   processes = ['app']
 
 [[vm]]
