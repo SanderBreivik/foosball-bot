@@ -67,7 +67,7 @@ def check_spots_and_update(channel_id, message_ts):
 import random
 
 def announce_complete_match(channel_id):
-    logger.info(f"Announcing complete match. Match spots: {match_spots}")
+    logger.info(f"Announcing complete match. Match spots: {match_spots.spots}")
     user_ids = match_spots.get_user_ids()  
     random.shuffle(user_ids)
     
@@ -100,7 +100,7 @@ def post_foosball():
     user_name = user_info['user']['name'] if user_info['ok'] else 'Unknown User'
 
     match_spots.assign_spot(user_id, user_name)
-    logger.info(f"User {user_name} has joined the foosball match. Match spots: {match_spots}")
+    logger.info(f"User {user_name} has joined the foosball match. Match spots: {match_spots.spots}")
     blocks = [
         {
             "type": "section",
