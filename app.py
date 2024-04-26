@@ -83,6 +83,10 @@ def post_foosball():
     logger.info(f"User {user_name} has joined the foosball match. Match spots: {match_spots}")
     blocks = [
         {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": "Bli med på foosball da! Velg en ledig spot:"}
+        },
+        {
             "type": "actions",
             "block_id": "foosball_select",
             "elements": [
