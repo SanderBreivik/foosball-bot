@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from dotenv import load_dotenv, find_dotenv
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
-
+from threading import Lock
 
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
@@ -19,13 +19,8 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 client = WebClient(token=os.getenv('SLACK_BOT_TOKEN'))
 
-# Dictionary to track the status of spots
-match_spots = {
-    "spot1": None,
-    "spot2": None,
-    "spot3": None,
-    "spot4": None
-}
+match_spots_lock = Lock()
+
 
 def cancel_match_if_incomplete(channel_id, message_ts):
     threading.Timer(300, check_spots_and_update, args=(channel_id, message_ts)).start()
@@ -78,17 +73,13 @@ def announce_complete_match(channel_id):
             logging.error(f"Failed to announce complete match: {e.response['error']}")
 @app.route('/post_foosball', methods=['POST'])
 def post_foosball():
-    match_spots = {
-        "spot1": None,
-        "spot2": None,
-        "spot3": None,
-        "spot4": None
-    }
+    global match_spots
     user_id = request.form.get('user_id')
     user_info = client.users_info(user=user_id)
     user_name = user_info['user']['name'] if user_info['ok'] else 'Unknown User'
 
-    match_spots["spot1"] = {"user_id": user_id, "name": user_name}
+    with match_spots_lock:
+        match_spots["spot1"] = {"user_id": user_id, "name": user_name}
     logger.info(f"User {user_name} has joined the foosball match. Match spots: {match_spots}")
     blocks = [
         {
@@ -117,6 +108,7 @@ def post_foosball():
 
 @app.route('/slack/interactive', methods=['POST'])
 def interactive():
+    global match_spots
     payload = json.loads(request.form['payload'])
     user_id = payload['user']['id']
     user_name = payload['user']['name']
@@ -126,17 +118,17 @@ def interactive():
 
     blocks = payload['message']['blocks']
     selected = False
-    for block in blocks:
-        if block['type'] == 'actions':
-            for element in block['elements']:
-                if element['action_id'] == action_id:
-                    element['text']['text'] = f"{user_name} (selected)"
-                    element['style'] = 'danger'
-                    element['action_id'] = f"disabled-{user_name}"
-                    match_spots[element['value']] = {"user_id": user_id, "name": user_name}
-                    logger.info(f"User {user_name} has joined the foosball match. Match spots: {match_spots}")
+    with match_spots_lock:
+        for block in blocks:
+            if block['type'] == 'actions':
+                for element in block['elements']:
+                    if element['action_id'] == action_id:
+                        match_spots[element['value']] = {"user_id": user_id, "name": user_name}
+                        element['text']['text'] = f"{user_name} (selected)"
+                        element['style'] = 'danger'
+                        element['action_id'] = f"disabled-{element['value']}"
+                        selected = True
 
-                    selected = True
     if selected and all(spot for spot in match_spots.values()):
         logger.info("All spots are filled. Match confirmed.")
         announce_complete_match(channel_id)
