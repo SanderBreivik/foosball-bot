@@ -76,6 +76,12 @@ def announce_complete_match(channel_id):
             logging.error(f"Failed to announce complete match: {e.response['error']}")
 @app.route('/post_foosball', methods=['POST'])
 def post_foosball():
+    match_spots = {
+        "spot1": None,
+        "spot2": None,
+        "spot3": None,
+        "spot4": None
+    }
     user_id = request.form.get('user_id')
     user_info = client.users_info(user=user_id)
     user_name = user_info['user']['name'] if user_info['ok'] else 'Unknown User'
