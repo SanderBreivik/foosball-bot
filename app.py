@@ -1,12 +1,14 @@
-from flask import Flask, request, jsonify
 import os
 import json
 import logging
 import threading
+import random
+from flask import Flask, request, jsonify
 from datetime import datetime, timedelta
 from dotenv import load_dotenv, find_dotenv
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
+
 
 dotenv_path = find_dotenv()
 load_dotenv(dotenv_path)
@@ -29,7 +31,7 @@ def cancel_match_if_incomplete(channel_id, message_ts):
     threading.Timer(300, check_spots_and_update, args=(channel_id, message_ts)).start()
 
 def check_spots_and_update(channel_id, message_ts):
-    if all(spot['user_id'] for spot in match_spots.values()):
+    if all(spot and spot['user_id'] for spot in match_spots.values()):
         logging.info("All spots are filled. Match confirmed.")
         return
     try:
@@ -43,19 +45,35 @@ def check_spots_and_update(channel_id, message_ts):
     except SlackApiError as e:
         logging.error(f"Failed to update original message: {e.response['error']}")
 
-def announce_complete_match(channel_id, original_message_ts):
-    players = ' '.join([f"<@{spot['user_id']}>" for spot in match_spots.values() if spot is not None])
-    try:
-        text = f"The match is set! Players: {players}"
-        client.chat_update(
-            channel=channel_id,
-            ts=original_message_ts,
-            text=text
-        )
-        logging.info("Announced complete match with all players tagged.")
-    except SlackApiError as e:
-        logging.error(f"Failed to announce complete match: {e.response['error']}")
+import random
 
+def announce_complete_match(channel_id):
+    if all(spot and spot['user_id'] for spot in match_spots.values()):
+        # Gather all players and shuffle them
+        players = [spot for spot in match_spots.values() if spot]
+        random.shuffle(players)
+        
+        # Splitting the players into two teams
+        mid_point = len(players) // 2
+        team1 = players[:mid_point]
+        team2 = players[mid_point:]
+        
+        # Generating the message with tagged users for each team
+        team1_tags = ' '.join([f"<@{player['user_id']}>" for player in team1])
+        team2_tags = ' '.join([f"<@{player['user_id']}>" for player in team2])
+        
+        message_text = (f"The match is set!\n"
+                        f"Team 1: {team1_tags}\n"
+                        f"Team 2: {team2_tags}")
+
+        try:
+            client.chat_postMessage(
+                channel=channel_id,
+                text=message_text
+            )
+            logging.info("Announced complete match with all players tagged and teams formed.")
+        except SlackApiError as e:
+            logging.error(f"Failed to announce complete match: {e.response['error']}")
 @app.route('/post_foosball', methods=['POST'])
 def post_foosball():
     user_id = request.form.get('user_id')
@@ -109,7 +127,7 @@ def interactive():
                     match_spots[element['value']] = {"user_id": user_id, "name": user_name}
                     selected = True
     if selected and all(spot for spot in match_spots.values()):
-        announce_complete_match(channel_id, message_ts)
+        announce_complete_match(channel_id)
     else:
         try:
             client.chat_update(
