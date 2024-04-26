@@ -55,7 +55,7 @@ def post_foosball():
             "type": "actions",
             "block_id": "foosball_select",
             "elements": [
-                {"type": "button", "text": {"type": "plain_text", "text": f"{user_name} (selected)"}, "value": "spot1", "action_id": "disabled-spot1", "style": "danger"},
+                {"type": "button", "text": {"type": "plain_text", "text": f"{user_name} (selected)"}, "value": "spot1", "action_id": f"disabled-{user_id}", "style": "danger"},
                 {"type": "button", "text": {"type": "plain_text", "text": "Spot 2"}, "value": "spot2", "action_id": "spot2"},
                 {"type": "button", "text": {"type": "plain_text", "text": "Spot 3"}, "value": "spot3", "action_id": "spot3"},
                 {"type": "button", "text": {"type": "plain_text", "text": "Spot 4"}, "value": "spot4", "action_id": "spot4"}
@@ -97,9 +97,9 @@ def interactive():
                         if element['action_id'] == action_id:
                             element['text']['text'] = f"{user_name} (selected)"
                             element['style'] = 'danger'
-                            element['action_id'] = f"disabled-{element['value']}"
+                            element['action_id'] = f"disabled-{user_id}"
         
-            all_filled = all(spot is not None for spot in spots_filled.values())
+    all_filled = all(spot is not None for spot in spots_filled.values())
 
     try:
         client.chat_update(
