@@ -55,7 +55,7 @@ def post_foosball():
             "type": "actions",
             "block_id": "foosball_select",
             "elements": [
-                {"type": "button", "text": {"type": "plain_text", "text": f"{user_name} (selected)"}, "value": "spot1", "action_id": f"disabled-{user_id}", "style": "danger"},
+                {"type": "button", "text": {"type": "plain_text", "text": f"{user_name} (selected)"}, "value": "spot1", "action_id": f"disabled-{user_name}", "style": "danger"},
                 {"type": "button", "text": {"type": "plain_text", "text": "Spot 2"}, "value": "spot2", "action_id": "spot2"},
                 {"type": "button", "text": {"type": "plain_text", "text": "Spot 3"}, "value": "spot3", "action_id": "spot3"},
                 {"type": "button", "text": {"type": "plain_text", "text": "Spot 4"}, "value": "spot4", "action_id": "spot4"}
@@ -90,14 +90,14 @@ def interactive():
 
     with spot_lock:
         if spots_filled[spot_id] is None:
-            spots_filled[spot_id] = user_name
+            spots_filled[spot_id] = user_id
             for block in blocks:
                 if block['type'] == 'actions':
                     for element in block['elements']:
                         if element['action_id'] == action_id:
                             element['text']['text'] = f"{user_name} (selected)"
                             element['style'] = 'danger'
-                            element['action_id'] = f"disabled-{user_id}"
+                            element['action_id'] = f"disabled-{user_name}"
         
     all_filled = all(spot is not None for spot in spots_filled.values())
 
