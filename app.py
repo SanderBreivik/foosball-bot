@@ -100,6 +100,8 @@ def interactive():
                             element['action_id'] = f"disabled-{user_name}"
         
     all_filled = all(spot is not None for spot in spots_filled.values())
+    logger.info(f"Spots filled: {spots_filled}")
+    
 
     try:
         client.chat_update(
