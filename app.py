@@ -19,14 +19,32 @@ logger = logging.getLogger(__name__)
 app = Flask(__name__)
 client = WebClient(token=os.getenv('SLACK_BOT_TOKEN'))
 
-match_spots_lock = Lock()
-match_spots = {
-    "spot1": None,
-    "spot2": None,
-    "spot3": None,
-    "spot4": None
-}
+class MatchSpots:
+    def __init__(self):
+        self.spots = {f"spot{i}": None for i in range(1, 5)}
 
+    def assign_spot(self, user_id, user_name):
+        spot = self.get_available_spot()
+        if spot:
+            self.spots[spot] = {"user_id": user_id, "name": user_name}
+            return spot
+        return None
+
+    def get_available_spot(self):
+        for spot, value in self.spots.items():
+            if value is None:
+                return spot
+        return None
+    
+    def isFull(self):
+        return all(spot and spot['user_id'] for spot in self.spots.values())
+    
+    def get_user_ids(self):
+        return [spot['user_id'] for spot in self.spots.values() if spot]
+    
+    
+
+match_spots = MatchSpots()
 
 def cancel_match_if_incomplete(channel_id, message_ts):
     threading.Timer(300, check_spots_and_update, args=(channel_id, message_ts)).start()
@@ -50,42 +68,38 @@ import random
 
 def announce_complete_match(channel_id):
     logger.info(f"Announcing complete match. Match spots: {match_spots}")
-    if all(spot and spot['user_id'] for spot in match_spots.values()):
-        # Gather all players and shuffle them
+    user_ids = match_spots.get_user_ids()  
+    random.shuffle(user_ids)
+    
+    # Splitting the players into two teams
+    mid_point = len(user_ids) // 2
+    team1 = user_ids[:mid_point]
+    team2 = user_ids[mid_point:]
+    
+    # Generating the message with tagged users for each team
+    team1_tags = ' '.join([f"<@{player}>" for player in team1])
+    team2_tags = ' '.join([f"<@{player}>" for player in team2])
+    
+    message_text = (f"The match is set!\n"
+                    f"Team 1: {team1_tags}\n"
+                    f"Team 2: {team2_tags}")
 
-        players = [spot for spot in match_spots.values() if spot]
-        random.shuffle(players)
-        
-        # Splitting the players into two teams
-        mid_point = len(players) // 2
-        team1 = players[:mid_point]
-        team2 = players[mid_point:]
-        
-        # Generating the message with tagged users for each team
-        team1_tags = ' '.join([f"<@{player['user_id']}>" for player in team1])
-        team2_tags = ' '.join([f"<@{player['user_id']}>" for player in team2])
-        
-        message_text = (f"The match is set!\n"
-                        f"Team 1: {team1_tags}\n"
-                        f"Team 2: {team2_tags}")
+    try:
+        client.chat_postMessage(
+            channel=channel_id,
+            text=message_text
+        )
+        logging.info("Announced complete match with all players tagged and teams formed.")
+    except SlackApiError as e:
+        logging.error(f"Failed to announce complete match: {e.response['error']}")
 
-        try:
-            client.chat_postMessage(
-                channel=channel_id,
-                text=message_text
-            )
-            logging.info("Announced complete match with all players tagged and teams formed.")
-        except SlackApiError as e:
-            logging.error(f"Failed to announce complete match: {e.response['error']}")
 @app.route('/post_foosball', methods=['POST'])
 def post_foosball():
-    global match_spots
     user_id = request.form.get('user_id')
     user_info = client.users_info(user=user_id)
     user_name = user_info['user']['name'] if user_info['ok'] else 'Unknown User'
 
-    with match_spots_lock:
-        match_spots["spot1"] = {"user_id": user_id, "name": user_name}
+    match_spots.assign_spot(user_id, user_name)
     logger.info(f"User {user_name} has joined the foosball match. Match spots: {match_spots}")
     blocks = [
         {
@@ -105,7 +119,7 @@ def post_foosball():
     ]
     try:
         response = client.chat_postMessage(
-            channel='#foosball',
+            channel='#test_chanel',
             text="Bli med på foosball da! Velg en ledig spot:",
             blocks=blocks
         )
@@ -118,7 +132,6 @@ def post_foosball():
 
 @app.route('/slack/interactive', methods=['POST'])
 def interactive():
-    global match_spots
     payload = json.loads(request.form['payload'])
     user_id = payload['user']['id']
     user_name = payload['user']['name']
@@ -127,20 +140,21 @@ def interactive():
     message_ts = payload['container']['message_ts']
 
     blocks = payload['message']['blocks']
-    selected = False
-    with match_spots_lock:
-        for block in blocks:
-            if block['type'] == 'actions':
-                for element in block['elements']:
-                    if element['action_id'] == action_id:
-                        match_spots[element['value']] = {"user_id": user_id, "name": user_name}
-                        element['text']['text'] = f"{user_name} (selected)"
-                        element['style'] = 'danger'
-                        element['action_id'] = f"disabled-{element['value']}"
-                        selected = True
+    spot = match_spots.assign_spot(user_id, user_name)
+    if spot:
+        logger.info(f"User {user_name} has joined the foosball match. Match spots: {match_spots.spots}")
+    else:
+        logger.info(f"No available spots for user {user_name}.")
 
-    if selected and all(spot for spot in match_spots.values()):
-        logger.info("All spots are filled. Match confirmed.")
+    for block in blocks:
+        if block['type'] == 'actions':
+            for element in block['elements']:
+                if element['action_id'] == action_id:
+                    element['text']['text'] = f"{user_name} (selected)"
+                    element['style'] = 'danger'
+                    element['action_id'] = f"disabled-{element['value']}"
+
+    if (match_spots.isFull()):
         announce_complete_match(channel_id)
     else:
         try:
