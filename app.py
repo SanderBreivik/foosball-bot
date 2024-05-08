@@ -89,8 +89,8 @@ def interactive():
         blocks.append(join_button)
     else:
         team1, team2 = assign_teams()
-        team_text = f"\nLag 1: {', '.join([f'<@{player['id']}>' for player in team1])}"
-        team_text += f"\nLag 2: {', '.join([f'<@{player['id']}>' for player in team2])}"
+        team_text = "\nLag 1: {}".format(", ".join(["<@{}>".format(player['id']) for player in team1]))
+        team_text += "\nLag 2: {}".format(", ".join(["<@{}>".format(player['id']) for player in team2]))
         team_text += "\nAlle plasser er fylt. Lagene er klare!"
         logger.info("All player spots filled and teams announced.")
         blocks.append({
