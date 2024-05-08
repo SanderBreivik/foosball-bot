@@ -89,7 +89,7 @@ def interactive():
     blocks = payload['message']['blocks']
 
     with spot_lock:
-        if spots_filled[spot_id] is None:
+        if spots_filled[spot_id] is None and spots_filled.values().count(user_id) == 0:
             spots_filled[spot_id] = user_id
             for block in blocks:
                 if block['type'] == 'actions':
