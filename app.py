@@ -72,21 +72,37 @@ def interactive():
     players_list = ", ".join([player['name'] for player in players])
     text = f"Spillere: {players_list}"
 
-    if len(players) == 4:
+    blocks = [
+        {
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": text}
+        }
+    ]
+
+    if len(players) < 4:
+        join_button = {
+            "type": "actions",
+            "elements": [
+                {"type": "button", "text": {"type": "plain_text", "text": "Bli med!"}, "action_id": "join_game"}
+            ]
+        }
+        blocks.append(join_button)
+    else:
         team1, team2 = assign_teams()
-        text += f"\nLag 1: {', '.join([player['name'] for player in team1])}"
-        text += f"\nLag 2: {', '.join([player['name'] for player in team2])}"
-        text += "\nAlle plasser er fylt. Lagene er klare!"
+        team_text = f"\nLag 1: {', '.join([player['name'] for player in team1])}"
+        team_text += f"\nLag 2: {', '.join([player['name'] for player in team2])}"
+        team_text += "\nAlle plasser er fylt. Lagene er klare!"
         logger.info("All player spots filled and teams announced.")
+        blocks.append({
+            "type": "section",
+            "text": {"type": "mrkdwn", "text": team_text}
+        })
 
     try:
         client.chat_update(
             channel=channel_id,
             ts=message_ts,
-            blocks=[{
-                "type": "section",
-                "text": {"type": "mrkdwn", "text": text}
-            }]
+            blocks=blocks
         )
         logger.info("Game status message updated successfully.")
     except SlackApiError as e:
@@ -97,6 +113,7 @@ def interactive():
         return jsonify({'error': 'An unexpected error occurred'}), 500
 
     return jsonify({'status': 'Message updated successfully'}), 200
+
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 3000)))
