@@ -7,8 +7,9 @@ from dotenv import load_dotenv, find_dotenv
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
 
+# Set up environment variables and logging
 load_dotenv(find_dotenv())
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
@@ -18,7 +19,9 @@ players = []
 
 def assign_teams():
     random.shuffle(players)
-    return players[:2], players[2:]
+    team1, team2 = players[:2], players[2:]
+    logger.info(f"Teams assigned: Team 1 - {[player['name'] for player in team1]}, Team 2 - {[player['name'] for player in team2]}")
+    return team1, team2
 
 @app.route('/post_foosball', methods=['POST'])
 def post_foosball():
@@ -26,8 +29,9 @@ def post_foosball():
     user_info = client.users_info(user=user_id)
     user_name = user_info['user']['name'] if user_info['ok'] else 'Unknown User'
     players.clear()
-    players.append({'id': user_id, 'name': user_name})  # Add the original poster automatically
-    
+    players.append({'id': user_id, 'name': user_name})
+    logger.info(f"{user_name} has initiated a foosball game.")
+
     blocks = [
         {
             "type": "section",
@@ -40,11 +44,17 @@ def post_foosball():
             ]
         }
     ]
-    
-    response = client.chat_postMessage(
-        channel='#foosball',
-        blocks=blocks
-    )
+
+    try:
+        response = client.chat_postMessage(
+            channel='#foosball',
+            blocks=blocks
+        )
+        logger.info("Foosball game invitation posted successfully.")
+    except SlackApiError as e:
+        logger.error(f"Failed to post foosball game invitation: {e.response['error']}")
+        return jsonify({'error': e.response['error']}), 400
+
     return jsonify({'message': 'Message posted!'}), 200
 
 @app.route('/slack/interactive', methods=['POST'])
@@ -54,18 +64,22 @@ def interactive():
     user_name = payload['user']['name']
     channel_id = payload['channel']['id']
     message_ts = payload['container']['message_ts']
-    
+
     if len(players) < 4 and all(player['id'] != user_id for player in players):
         players.append({'id': user_id, 'name': user_name})
-        players_list = ", ".join([player['name'] for player in players])
-        text = f"Spillere: {players_list}"
+        logger.info(f"{user_name} joined the game, total players now: {len(players)}.")
 
-        if len(players) == 4:
-            team1, team2 = assign_teams()
-            text += f"\nLag 1: {', '.join([player['name'] for player in team1])}"
-            text += f"\nLag 2: {', '.join([player['name'] for player in team2])}"
-            text += "\nAlle plasser er fylt. Lagene er klare!"
+    players_list = ", ".join([player['name'] for player in players])
+    text = f"Spillere: {players_list}"
 
+    if len(players) == 4:
+        team1, team2 = assign_teams()
+        text += f"\nLag 1: {', '.join([player['name'] for player in team1])}"
+        text += f"\nLag 2: {', '.join([player['name'] for player in team2])}"
+        text += "\nAlle plasser er fylt. Lagene er klare!"
+        logger.info("All player spots filled and teams announced.")
+
+    try:
         client.chat_update(
             channel=channel_id,
             ts=message_ts,
@@ -74,6 +88,14 @@ def interactive():
                 "text": {"type": "mrkdwn", "text": text}
             }]
         )
+        logger.info("Game status message updated successfully.")
+    except SlackApiError as e:
+        logger.error(f"Failed to update game status message: {e.response['error']}")
+        return jsonify({'error': f'Failed to update message: {e.response["error"]}'}), 400
+    except Exception as e:
+        logger.error(f"An unexpected error occurred: {e}")
+        return jsonify({'error': 'An unexpected error occurred'}), 500
+
     return jsonify({'status': 'Message updated successfully'}), 200
 
 if __name__ == "__main__":
