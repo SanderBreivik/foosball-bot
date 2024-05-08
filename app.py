@@ -2,6 +2,7 @@ import os
 import json
 import random
 import logging
+import threading
 from flask import Flask, request, jsonify
 from dotenv import load_dotenv, find_dotenv
 from slack_sdk import WebClient
@@ -16,6 +17,20 @@ app = Flask(__name__)
 client = WebClient(token=os.getenv('SLACK_BOT_TOKEN'))
 
 players = []
+
+def check_foosball_status(channel_id, message_ts):
+    if len(players) < 4:
+        try:
+            client.chat_update(
+                channel=channel_id,
+                ts=message_ts,
+                text="Det har gått 5 minutter uten at alle plassene ble fylt opp. Kampen ble kanselert"
+            )
+            logger.info("Game canceled due to incomplete participation.")
+        except SlackApiError as e:
+            logger.error(f"Failed to cancel game: {e.response['error']}")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred: {e}")
 
 def assign_teams():
     random.shuffle(players)
@@ -54,6 +69,8 @@ def post_foosball():
     except SlackApiError as e:
         logger.error(f"Failed to post foosball game invitation: {e.response['error']}")
         return jsonify({'error': e.response['error']}), 400
+    
+    threading.Timer(300, check_foosball_status, args=[response['channel'], response['ts']]).start()
 
     return jsonify({'message': 'Message posted!'}), 200
 
