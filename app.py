@@ -1,9 +1,9 @@
+from flask import Flask, request, jsonify
 import os
 import json
 import random
 import logging
 import threading
-from flask import Flask, request, jsonify
 from dotenv import load_dotenv, find_dotenv
 from slack_sdk import WebClient
 from slack_sdk.errors import SlackApiError
@@ -21,11 +21,11 @@ players = []
 def check_foosball_status(channel_id, message_ts):
     if len(players) < 4:
         try:
-            client.chat_update(
+            client.chat_postMessage(
                 channel=channel_id,
-                ts=message_ts,
                 text="Det har gått 5 minutter uten at alle plassene ble fylt opp. Kampen ble kanselert"
             )
+            client.chat_delete(channel=channel_id, ts=message_ts)
             logger.info("Game canceled due to incomplete participation.")
         except SlackApiError as e:
             logger.error(f"Failed to cancel game: {e.response['error']}")
@@ -85,51 +85,33 @@ def interactive():
     if len(players) < 4 and all(player['id'] != user_id for player in players):
         players.append({'id': user_id, 'name': user_name})
         logger.info(f"{user_name} joined the game, total players now: {len(players)}.")
-
-    players_list = ", ".join([player['name'] for player in players])
-    text = f"Spillere: {players_list}"
-
-    blocks = [
-        {
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": text}
-        }
-    ]
-
-    if len(players) < 4:
-        join_button = {
-            "type": "actions",
-            "elements": [
-                {"type": "button", "text": {"type": "plain_text", "text": "Bli med!"}, "action_id": "join_game"}
-            ]
-        }
-        blocks.append(join_button)
-    else:
+    
+    if len(players) == 4:
         team1, team2 = assign_teams()
-        team_text = "\nLag 1: {}".format(", ".join(["<@{}>".format(player['id']) for player in team1]))
-        team_text += "\nLag 2: {}".format(", ".join(["<@{}>".format(player['id']) for player in team2]))
-        team_text += "\nAlle plasser er fylt. Lagene er klare!"
-        logger.info("All player spots filled and teams announced.")
-        blocks.append({
-            "type": "section",
-            "text": {"type": "mrkdwn", "text": team_text}
-        })
+        team_text = "Lagene er klare!\nLag 1: " + ", ".join([f"<@{player['id']}>" for player in team1])
+        team_text += "\nLag 2: " + ", ".join([f"<@{player['id']}>" for player in team2])
 
-    try:
-        client.chat_update(
-            channel=channel_id,
-            ts=message_ts,
-            blocks=blocks
-        )
-        logger.info("Game status message updated successfully.")
-    except SlackApiError as e:
-        logger.error(f"Failed to update game status message: {e.response['error']}")
-        return jsonify({'error': f'Failed to update message: {e.response["error"]}'}), 400
-    except Exception as e:
-        logger.error(f"An unexpected error occurred: {e}")
-        return jsonify({'error': 'An unexpected error occurred'}), 500
+        try:
+            # Posting a new message with user mentions to notify players
+            response = client.chat_postMessage(
+                channel=channel_id,
+                text=team_text
+            )
+            logger.info("New game announcement with team assignments posted and players notified.")
+            # Delete the original message
+            client.chat_delete(
+                channel=channel_id,
+                ts=message_ts
+            )
+            logger.info("Original game invitation message removed.")
+        except SlackApiError as e:
+            logger.error(f"Failed to post new game announcement or remove old message: {e.response['error']}")
+            return jsonify({'error': f'Failed to post/remove message: {e.response["error"]}'}), 400
+        except Exception as e:
+            logger.error(f"An unexpected error occurred: {e}")
+            return jsonify({'error': 'An unexpected error occurred'}), 500
 
-    return jsonify({'status': 'Message updated successfully'}), 200
+    return jsonify({'status': 'Action completed successfully'}), 200
 
 
 if __name__ == "__main__":
