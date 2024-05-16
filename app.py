@@ -85,7 +85,30 @@ def interactive():
     if len(players) < 4 and all(player['id'] != user_id for player in players):
         players.append({'id': user_id, 'name': user_name})
         logger.info(f"{user_name} joined the game, total players now: {len(players)}.")
-    
+        players_list = ", ".join([player['name'] for player in players])
+        text = f"Spillere: {players_list}"
+
+        blocks = [
+            {
+                "type": "section",
+                "text": {"type": "mrkdwn", "text": text}
+            }
+        ]
+        join_button = {
+            "type": "actions",
+            "elements": [
+                {"type": "button", "text": {"type": "plain_text", "text": "Bli med!"}, "action_id": "join_game"}
+            ]
+        }
+        
+        blocks.append(join_button)
+        client.chat_update(
+            channel=channel_id,
+            ts=message_ts,
+            blocks=blocks
+        )
+        logger.info("Game status message updated successfully.")
+        
     if len(players) == 4:
         team1, team2 = assign_teams()
         team_text = "Lagene er klare!\nLag 1: " + ", ".join([f"<@{player['id']}>" for player in team1])
