@@ -20,10 +20,20 @@ players = []
 
 def check_foosball_status(channel_id, message_ts):
     if len(players) < 4:
+        player_names = ", ".join([player['name'] for player in players]) if players else "Ingen"
+        player_count = len(players)
         try:
+            # Post a message indicating the game was cancelled due to insufficient players, 
+            # and list the players who had signed up or mention that no one had signed up.
+            cancellation_message = "Det har gått 5 minutter uten at alle plassene ble fylt opp. Kampen ble kanselert."
+            if player_count > 0:
+                cancellation_message += f" Påmeldte spillere var: {player_names}."
+            else:
+                cancellation_message += " Det var ingen påmeldte spillere."
+                
             client.chat_postMessage(
                 channel=channel_id,
-                text="Det har gått 5 minutter uten at alle plassene ble fylt opp. Kampen ble kanselert"
+                text=cancellation_message
             )
             client.chat_delete(channel=channel_id, ts=message_ts)
             logger.info("Game canceled due to incomplete participation.")
@@ -31,7 +41,6 @@ def check_foosball_status(channel_id, message_ts):
             logger.error(f"Failed to cancel game: {e.response['error']}")
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
-
 def assign_teams():
     random.shuffle(players)
     team1, team2 = players[:2], players[2:]
