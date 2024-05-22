@@ -41,6 +41,7 @@ def check_foosball_status(channel_id, message_ts):
             logger.error(f"Failed to cancel game: {e.response['error']}")
         except Exception as e:
             logger.error(f"An unexpected error occurred: {e}")
+
 def assign_teams():
     random.shuffle(players)
     team1, team2 = players[:2], players[2:]
