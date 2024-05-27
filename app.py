@@ -15,44 +15,32 @@ logger = logging.getLogger(__name__)
 
 app = Flask(__name__)
 client = WebClient(token=os.getenv('SLACK_BOT_TOKEN'))
-current_timer = None
+
 players = []
 
-def check_foosball_status(channel_id, message_ts, due_to_join=False):
-    global current_timer
-
+def check_foosball_status(channel_id, message_ts):
     if len(players) < 4:
-        # Cancel the timer if this check was triggered by a player joining
-        if due_to_join and current_timer:
-            current_timer.cancel()
-
         player_names = ", ".join([player['name'] for player in players]) if players else "Ingen"
         player_count = len(players)
-
-        if not due_to_join:
-            # This block is only executed if the timer naturally expired
-            try:
-                cancellation_message = "Det har gått 5 minutter uten at alle plassene ble fylt opp. Kampen ble kanselert."
-                if player_count > 0:
-                    cancellation_message += f" Påmeldte spillere var: {player_names}."
-                else:
-                    cancellation_message += " Det var ingen påmeldte spillere."
+        try:
+            # Post a message indicating the game was cancelled due to insufficient players, 
+            # and list the players who had signed up or mention that no one had signed up.
+            cancellation_message = "Det har gått 5 minutter uten at alle plassene ble fylt opp. Kampen ble kanselert."
+            if player_count > 0:
+                cancellation_message += f" Påmeldte spillere var: {player_names}."
+            else:
+                cancellation_message += " Det var ingen påmeldte spillere."
                 
-                client.chat_postMessage(
-                    channel=channel_id,
-                    text=cancellation_message
-                )
-                client.chat_delete(channel=channel_id, ts=message_ts)
-                logger.info("Game canceled due to incomplete participation.")
-            except SlackApiError as e:
-                logger.error(f"Failed to cancel game: {e.response['error']}")
-            except Exception as e:
-                logger.error(f"An unexpected error occurred: {e}")
-
-        # Restart the timer as long as there are less than 4 players and the check was due to a player joining
-        if len(players) < 4 and due_to_join:
-            current_timer = threading.Timer(300, check_foosball_status, args=[channel_id, message_ts])
-            current_timer.start()
+            client.chat_postMessage(
+                channel=channel_id,
+                text=cancellation_message
+            )
+            client.chat_delete(channel=channel_id, ts=message_ts)
+            logger.info("Game canceled due to incomplete participation.")
+        except SlackApiError as e:
+            logger.error(f"Failed to cancel game: {e.response['error']}")
+        except Exception as e:
+            logger.error(f"An unexpected error occurred: {e}")
 
 def assign_teams():
     random.shuffle(players)
@@ -62,10 +50,6 @@ def assign_teams():
 
 @app.route('/post_foosball', methods=['POST'])
 def post_foosball():
-    global current_timer
-    current_timer = threading.Timer(300, check_foosball_status, args=[response['channel'], response['ts']])
-    current_timer.start()
-    
     user_id = request.form.get('user_id')
     user_info = client.users_info(user=user_id)
     user_name = user_info['user']['name'] if user_info['ok'] else 'Unknown User'
@@ -133,7 +117,6 @@ def interactive():
             ts=message_ts,
             blocks=blocks
         )
-        check_foosball_status(channel_id, message_ts, due_to_join=True)
         logger.info("Game status message updated successfully.")
         
     if len(players) == 4:
