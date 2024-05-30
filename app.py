@@ -121,8 +121,8 @@ def interactive():
         
     if len(players) == 4:
         team1, team2 = assign_teams()
-        team_text = "Lagene er klare!\nLag 1 (første spiller starter fremme): " + ", ".join([f"<@{player['id']}>" for player in team1])
-        team_text += "\nLag 2 (første spiller starter fremme): " + ", ".join([f"<@{player['id']}>" for player in team2])
+        team_text = "Lagene er klare!\nHvitt lag 1 ⚪ (første spiller starter fremme): " + ", ".join([f"<@{player['id']}>" for player in team1])
+        team_text += "\nBrunt lag 2 🟤 (første spiller starter fremme): " + ", ".join([f"<@{player['id']}>" for player in team2])
 
         try:
             # Posting a new message with user mentions to notify players
