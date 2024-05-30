@@ -25,7 +25,7 @@ def check_foosball_status(channel_id, message_ts):
         try:
             # Post a message indicating the game was cancelled due to insufficient players, 
             # and list the players who had signed up or mention that no one had signed up.
-            cancellation_message = "Det har gått 5 minutter uten at alle plassene ble fylt opp. Kampen ble kanselert."
+            cancellation_message = "Det har gått 5 minutter uten at alle plassene ble fylt opp. Kampen ble kansellert."
             if player_count > 0:
                 cancellation_message += f" Påmeldte spillere var: {player_names}."
             else:
