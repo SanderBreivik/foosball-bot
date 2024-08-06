@@ -1,7 +1,7 @@
 name: Stop Fly.io App
 on:
   schedule:
-    - cron: '0 6 * * *' # Runs at 2 AM UTC daily
+    - cron: '0 17 * * *' 
 
 jobs:
   stop-app:
