@@ -1,15 +1,15 @@
-name: Start Fly.io App
+name: Stop Fly.io App
 on:
   schedule:
-    - cron: "0 5 * * *"
+    - cron: "0 18 * * *"
 
 jobs:
-  start-app:
+  stop-app:
     runs-on: ubuntu-latest
     steps:
       - name: Install Flyctl
         run: curl -L https://fly.io/install.sh | sh
       - name: Login to Fly
         run: fly auth token --token ${{ secrets.FLY_API_TOKEN }}
-      - name: Start App
-        run: fly scale count 1 -a foosball-bot
+      - name: Stop App
+        run: fly scale count 0 -a foosball-bot
