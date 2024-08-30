@@ -19,6 +19,7 @@ client = WebClient(token=os.getenv('SLACK_BOT_TOKEN'))
 
 players = []
 players_lock = Lock()
+current_team_message_ts = None
 
 def check_foosball_status(channel_id, message_ts):
     if len(players) < 4:
@@ -106,6 +107,7 @@ def interactive():
         return jsonify({'error': 'No actions found in payload'}), 400
 
     action_ids = [action['action_id'] for action in actions]
+    team_message_id = None
     with players_lock:
         if 'join_game' in action_ids:
             if len(players) < 4 and all(player['id'] != user_id for player in players):
@@ -172,12 +174,46 @@ def interactive():
             return jsonify({'status': 'Action completed successfully'}), 200
         
         if 'shuffle_teams' in action_ids and len(players) == 4:
-            team1, team2 = assign_teams()  # Call assign_teams to shuffle teams again
-            logger.info("Teams shuffled.")    
-            team_text = "Lagene er blitt stokket om!\nGrått lag 1 ⚪: " + ", ".join([f"<@{player['id']}>" for player in team1])
-            team_text += "\nBrunt lag 2 🟤: " + ", ".join([f"<@{player['id']}>" for player in team2])
-    
-            pass 
+            if players_lock.locked():
+                # Notify the client that a shuffle operation is already in progress
+                text = "Et annet lag er allerede i ferd med å bli stokket om. Prøv igjen senere."
+                client.chat_postMessage(channel=channel_id, text=text)
+                logger.info("Shuffle operation is already in progress. Notified the requester accordingly.")
+                return jsonify({'status': 'Shuffle in progress'}), 200
+
+            with players_lock:
+               
+                team1, team2 = assign_teams()  
+                logger.info("Teams shuffled.")    
+                team_text = "Lagene er blitt stokket om!\nGrått lag 1 ⚪: " + ", ".join([f"<@{player['id']}>" for player in team1])
+                team_text += "\nBrunt lag 2 🟤: " + ", ".join([f"<@{player['id']}>" for player in team2])
+                try:
+                    response = client.chat_postMessage(
+                        channel=channel_id,
+                        text="Nytt foosballspill starter snart! 🚀",
+                        blocks=json.dumps([{"type": "section", "text": {"type": "mrkdwn", "text": team_text}}, shuffle_button])
+                    )
+                    current_team_message_ts = response['ts']
+                    logger.info("New game announcement with team assignments posted and players notified.")
+                    if current_team_message_ts is not None:
+                        try:
+                            # Delete the previous team announcement message
+                            client.chat_delete(channel=channel_id, ts=current_team_message_ts)
+                            logger.info("Previous team announcement message deleted successfully.")
+                        except SlackApiError as e:
+                            logger.error(f"Failed to delete previous team announcement: {e.response['error']}")
+                            return jsonify({'error': f'Failed to delete message: {e.response["error"]}'}), 400
+                        except Exception as e:
+                            logger.error(f"An unexpected error occurred while deleting message: {e}")
+                            return jsonify({'error': 'An unexpected error occurred'}), 500
+                except SlackApiError as e:
+                    logger.error(f"Failed to post new game announcement or remove old message: {e.response['error']}")
+                    return jsonify({'error': f'Failed to post/remove message: {e.response["error"]}'}), 400
+                except Exception as e:
+                    logger.error(f"An unexpected error occurred: {e}")
+                    return jsonify({'error': 'An unexpected error occurred'}), 500
+                return jsonify({'status': 'Action completed successfully'}), 200
+            
 
         
 
