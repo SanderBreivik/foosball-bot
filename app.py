@@ -174,15 +174,7 @@ def interactive():
             return jsonify({'status': 'Action completed successfully'}), 200
         
         if 'shuffle_teams' in action_ids and len(players) == 4:
-            if players_lock.locked():
-                # Notify the client that a shuffle operation is already in progress
-                text = "Et annet lag er allerede i ferd med å bli stokket om. Prøv igjen senere."
-                client.chat_postMessage(channel=channel_id, text=text)
-                logger.info("Shuffle operation is already in progress. Notified the requester accordingly.")
-                return jsonify({'status': 'Shuffle in progress'}), 200
-
-            with players_lock:
-               
+            if players_lock.acquire(blocking=False):
                 team1, team2 = assign_teams()  
                 logger.info("Teams shuffled.")    
                 team_text = "Lagene er blitt stokket om!\nGrått lag 1 ⚪: " + ", ".join([f"<@{player['id']}>" for player in team1])
@@ -212,7 +204,20 @@ def interactive():
                 except Exception as e:
                     logger.error(f"An unexpected error occurred: {e}")
                     return jsonify({'error': 'An unexpected error occurred'}), 500
-                return jsonify({'status': 'Action completed successfully'}), 200
+                finally:
+                    players_lock.release()
+            else:
+                logger.info("Failed to acquire lock to shuffle teams.")
+                text = "Et annet lag er allerede i ferd med å bli stokket om. Prøv igjen senere."
+                try:
+                    client.chat_postMessage(channel=channel_id, text=text)
+                    logger.info("Informed user that a shuffle operation is already in progress.")
+                except SlackApiError as e:
+                    logger.error(f"Failed to notify user about ongoing shuffle operation: {e.response['error']}")
+                except Exception as e:
+                    logger.error(f"An unexpected error occurred while notifying user: {e}")
+                # Return an appropriate response.
+                return jsonify({'status': 'Shuffle in progress'}), 200
             
 
         
