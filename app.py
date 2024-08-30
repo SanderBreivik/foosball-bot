@@ -97,6 +97,7 @@ def interactive():
     with players_lock: 
         if len(players) < 4 and all(player['id'] != user_id for player in players):
             players.append({'id': user_id, 'name': user_name})
+            logger.info(f"user object: {payload['user']}")
             logger.info(f"{user_name} joined the game, total players now: {len(players)}.")
             players_list = ", ".join([player['name'] for player in players])
             text = f"Spillere: {players_list}"
