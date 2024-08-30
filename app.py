@@ -54,7 +54,10 @@ def assign_teams():
 def post_foosball():
     user_id = request.form.get('user_id')
     user_info = client.users_info(user=user_id)
-    user_name = user_info['user']['name'] if user_info['ok'] else 'Unknown User'
+    if user_info['ok']:
+        user_name = user_info['user']['profile']['display_name'] or user_info['user']['real_name'] or user_info['user']['name']
+    else:
+        user_name = 'Unknown User'
     players.clear()
     players.append({'id': user_id, 'name': user_name})
     logger.info(f"{user_name} has initiated a foosball game.")
@@ -75,6 +78,7 @@ def post_foosball():
     try:
         response = client.chat_postMessage(
             channel='#foosball',
+            text="Foosball-invitasjon! ⚽",
             blocks=blocks
         )
         logger.info("Foosball game invitation posted successfully.")
@@ -90,7 +94,11 @@ def post_foosball():
 def interactive():
     payload = json.loads(request.form['payload'])
     user_id = payload['user']['id']
-    user_name = payload['user']['name']
+    user_info = client.users_info(user=user_id)
+    if user_info['ok']:
+        user_name = user_info['user']['profile']['display_name'] or user_info['user']['real_name'] or user_info['user']['name']
+    else:
+        user_name = 'Unknown User'
     channel_id = payload['channel']['id']
     message_ts = payload['container']['message_ts']
 
