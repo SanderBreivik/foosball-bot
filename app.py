@@ -133,7 +133,9 @@ def interactive():
             
         if len(players) == 4:
             team1, team2 = assign_teams()
-            team_text = "Lagene er klare!\nGrått lag 1 ⚪ (første spiller starter fremme): " + ", ".join([f"<@{player['id']}>" for player in team1])
+            team_text = "Lagene er klare!"
+            team_text += f"\nSpilleregler: {get_gamerules()}"
+            team_text += "\nGrått lag 1 ⚪ (første spiller starter fremme): " + ", ".join([f"<@{player['id']}>" for player in team1])"
             team_text += "\nBrunt lag 2 🟤 (første spiller starter fremme): " + ", ".join([f"<@{player['id']}>" for player in team2])
 
             try:
@@ -158,6 +160,17 @@ def interactive():
 
         return jsonify({'status': 'Action completed successfully'}), 200
 
+def get_gamerules():
+    rules = [
+        "Jacobsen random 🎲: Best av 3 sett, 5 poeng i hvert sett.",
+        "Legacy mode 🧓🏼: Første til 10 poeng, må vinne med 2 poeng.",
+        "Attack mode 🎯: Bare spilleren fremme kan score.",
+        "Defence mode 🥅: Bare spilleren bak kan score.",
+    ]
+    weights = [300, 100, 50, 50] 
+
+    selected_rule = random.choices(rules, weights, k=1)[0]
+    return selected_rule
 
 if __name__ == "__main__":
     app.run(host='0.0.0.0', port=int(os.getenv("PORT", 3000)))
