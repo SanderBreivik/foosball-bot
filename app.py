@@ -135,7 +135,7 @@ def interactive():
             team1, team2 = assign_teams()
             team_text = "Lagene er klare!"
             team_text += f"\nSpilleregler: {get_gamerules()}"
-            team_text += "\nGrått lag 1 ⚪ (første spiller starter fremme): " + ", ".join([f"<@{player['id']}>" for player in team1])"
+            team_text += "\nGrått lag 1 ⚪ (første spiller starter fremme): " + ", ".join([f"<@{player['id']}>" for player in team1])
             team_text += "\nBrunt lag 2 🟤 (første spiller starter fremme): " + ", ".join([f"<@{player['id']}>" for player in team2])
 
             try:
