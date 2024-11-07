@@ -163,11 +163,10 @@ def interactive():
 def get_gamerules():
     rules = [
         "Jacobsen random 🎲: Best av 3 sett, 5 poeng i hvert sett.",
-        "Legacy mode 🧓🏼: Første til 10 poeng, må vinne med 2 poeng.",
-        "Attack mode 🎯: Bare spilleren fremme kan score.",
-        "Defence mode 🥅: Bare spilleren bak kan score.",
+        "Classic mode 🕹️: Første til 10 poeng, må vinne med 2 poeng.",
+        "Crazy mode 🤪: Første til 10 poeng, må vinne med 2 poeng. Laget som scorer bytter posisjon."
     ]
-    weights = [300, 100, 50, 50] 
+    weights = [30, 10, 10] 
 
     selected_rule = random.choices(rules, weights, k=1)[0]
     return selected_rule
