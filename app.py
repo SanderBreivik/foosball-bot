@@ -166,7 +166,7 @@ def get_gamerules():
         "Classic mode 🕹️: Første til 10 poeng, må vinne med 2 poeng.",
         "Crazy mode 🤪: Første til 10 poeng, må vinne med 2 poeng. Laget som scorer bytter posisjon."
     ]
-    weights = [30, 10, 10] 
+    weights = [30, 30, 10] 
 
     selected_rule = random.choices(rules, weights, k=1)[0]
     return selected_rule
