@@ -163,7 +163,7 @@ def interactive():
 def get_gamerules():
     rules = [
         "Crazy mode 🤪: Første til 10 poeng, må vinne med 2 poeng. Laget som scorer bytter posisjon.",
-        "Woah! Dere bør tipp elotto i dag fordi her var det bare 1/100 sjanse for... \n SUPER CRAaaAAzYY MODE 🤯: Første til 10 poeng, må vinne med 2 poeng. Personen som scorer bytter LAG med spilleren i tilsvarende posisjon"
+        "Woah! Dere bør tippe lotto i dag fordi her var det bare 1/100 sjanse for... \n SUPER CRAaaAAzYY MODE 🤯: Første til 10 poeng, må vinne med 2 poeng. Personen som scorer bytter LAG med spilleren i tilsvarende posisjon"
     ]
     weights = [99, 1] 
 
