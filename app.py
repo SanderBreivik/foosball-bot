@@ -162,11 +162,10 @@ def interactive():
 
 def get_gamerules():
     rules = [
-        "Jacobsen random 🎲: Best av 3 sett, 5 poeng i hvert sett.",
-        "Classic mode 🕹️: Første til 10 poeng, må vinne med 2 poeng.",
-        "Crazy mode 🤪: Første til 10 poeng, må vinne med 2 poeng. Laget som scorer bytter posisjon."
+        "Crazy mode 🤪: Første til 10 poeng, må vinne med 2 poeng. Laget som scorer bytter posisjon.",
+        "Woah! Dere bør tipp elotto i dag fordi her var det bare 1/100 sjanse for... \n SUPER CRAaaAAzYY MODE 🤯: Første til 10 poeng, må vinne med 2 poeng. Personen som scorer bytter LAG med spilleren i tilsvarende posisjon"
     ]
-    weights = [10, 10, 10] 
+    weights = [99, 1] 
 
     selected_rule = random.choices(rules, weights, k=1)[0]
     return selected_rule
